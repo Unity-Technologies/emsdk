@@ -1051,18 +1051,22 @@ def cmake_configure(generator, build_root, src_root, build_type, extra_cmake_arg
       generator = []
 
     cmdline = [find_cmake()] + generator + ['-DCMAKE_BUILD_TYPE=' + build_type, '-DPYTHON_EXECUTABLE=' + sys.executable]
-    # Target macOS 11.0 Big Sur at minimum, to support older Mac devices.
-    # See https://en.wikipedia.org/wiki/MacOS#Hardware_compatibility for min-spec details.
-    if ARCH == 'arm64':
-      cmdline += ['-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0']
+
+    if MACOS:
+      # Target macOS 11.0 Big Sur at minimum, to support older Mac devices.
+      # See https://en.wikipedia.org/wiki/MacOS#Hardware_compatibility for min-spec details.
+      cur_macos_version = tuple(int(part) for part in platform.mac_ver()[0].split('.'))
+      lowest_supported_macos_version = (11, 0)
+      macos_version = min(cur_macos_version[:2], lowest_supported_macos_version)
+      macos_version = '.'.join(str(x) for x in macos_version)
+      cmdline += ['-DCMAKE_OSX_DEPLOYMENT_TARGET=' + macos_version]
+      # Specify the deployment target also as an env. var, since some Xcode versions
+      # read this instead of the CMake field.
+      os.environ['MACOSX_DEPLOYMENT_TARGET'] = macos_version
+
     cmdline += extra_cmake_args + [src_root]
 
     print('Running CMake: ' + str(cmdline))
-
-    # Specify the deployment target also as an env. var, since some Xcode versions
-    # read this instead of the CMake field.
-    if ARCH == 'arm64':
-      os.environ['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
 
     def quote_parens(x):
       if ' ' in x:
